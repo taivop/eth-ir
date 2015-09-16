@@ -21,4 +21,4 @@ project/plugins/project/
 *.iml
 
 # Exercise PDF-s
-.pdf
+*.pdf
