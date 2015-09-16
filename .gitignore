@@ -17,4 +17,8 @@ project/plugins/project/
 .worksheet
 
 # IntelliJ
-.idae
+.idea
+*.iml
+
+# Exercise PDF-s
+.pdf
