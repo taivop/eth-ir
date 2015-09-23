@@ -24,6 +24,12 @@ object Task1 {
     result
   }
 
+  def upperCaseStrings2(strings: List[String]): List[Int] = {
+    strings.zipWithIndex
+      .filter { case(x, i) => (x == x.toUpperCase)}
+      .map(_._2)
+  }
+
   def sum_reduce(l: Array[Int]) = {
     l.reduceLeft(_ + _)
   }
@@ -37,7 +43,7 @@ object Task1 {
   def main(args: Array[String]): Unit = {
     readFile("data/test.txt")
 
-    println(upperCaseStrings("AA" :: "as" :: "AAAA" :: "ASD" :: "ASd" :: Nil))
+    println(upperCaseStrings2("AA" :: "as" :: "AAAA" :: "ASD" :: "ASd" :: Nil))
 
     println(sum_reduce((1 to 1000).toArray))
 

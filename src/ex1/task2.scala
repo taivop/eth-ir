@@ -8,6 +8,8 @@ object Task2 {
     case h :: t => for(xh <- h; xt <- cartesianYield(t)) yield xh :: xt
   }
 
+  // TAs meant only 2-dimensional Cartesian products.
+
   /*def cartesian_map[T](xss: List[List[T]]): List[List[T]] = xss match {
     case Nil => List(Nil)
     case h :: t => h.map(xh => xh :: cartesian_map(t))
@@ -32,6 +34,9 @@ object Task2 {
       case None => false
       case Some(a) => true
     }).map(a => a match {case Some(a) => a})
+
+  // Flattening also removes None-s!
+
 
   def main(args: Array[String]): Unit = {
     println(cartesianYield(List((1 to 2).toList, (3 to 5).toList)))
