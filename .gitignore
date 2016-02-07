@@ -25,3 +25,7 @@ project/plugins/project/
 
 # Data
 data
+
+.DS_Store
+summary/*
+!summary/summary.tex
