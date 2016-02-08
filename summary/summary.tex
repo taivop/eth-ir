@@ -1,5 +1,6 @@
 \documentclass[a4paper, 11pt]{article}
 \usepackage{xcolor}
+\usepackage{afterpage}
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage[pdftex]{hyperref}
@@ -18,10 +19,14 @@
 
 \renewcommand{\familydefault}{\sfdefault}
 \newcommand{\lec}[2]{{\scriptsize \fcolorbox{black}{gray!30}{\textbf{L#1}.#2}}}
+\newcommand{\lectures}[1]{{\small \fcolorbox{black}{white}{Material from lectures: \textbf{#1}}}}
 
 \title{Information Retrieval AS 2015: summary}
 \author{Taivo Pungas}
 \date{\today}
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
 
 \begin{document}
 \maketitle
@@ -30,6 +35,8 @@
 
 
 \section{Near-duplicate detection}
+\lectures{2}
+% Lecture 2
 
 We want to detect which documents in a database are almost exact duplicates of each other.
 
@@ -63,13 +70,15 @@ Use sorted tables of permuted fingerprints to do quick near-duplicate detection 
 
 
 
-\section{Scoring search results}
+\newpage\section{Scoring search results}
+\lectures{3-5}
+% Lectures 3-5
 
 \subsection{Preprocessing documents and queries}
 We can preprocess documents and queries by:
 \begin{itemize}
 		\item Stemming aka lemmatisation: reducing words to their stems. E.g. Porter stemmer. \lec{2}{4}
-		\item Tokenising: e.g. handling numbers/dates/names as special cases. \lec{2}{4}
+		\item Tokenising: e.g. handling numbers/dates/names/phrases as special cases. \lec{2}{4}
 		\item Removing stop words (common terms like "the", "a", etc). \lec{2}{4}
 \end{itemize}
 
@@ -123,8 +132,6 @@ $$\mathrm{score}(d, q) = cos(\vec{q}, \vec{d}) = \frac{\vec{q} \cdot \vec{d}}{\V
 In practice we use non-symmetric scoring functions.
 
 
-
-
 \subsection{Language models for scoring}
 Let's assume the user imagines a relevant document and picks random terms out of it to form a query. Then we want to estimate the distribution of query terms given a document, $P(w|d)$. If we have estimated this, the query probability for a document is
 $$P(q|d) = \prod_{w \in q} P(w|d)$$
@@ -158,11 +165,202 @@ $$P(d|params) = \int_{\pi} \textrm{\{prior on such a } \pi\} \cdot \textrm{\{lik
 
 
 
+
+\newpage\section{Text categorisation}
+\lectures{6}
+% Lecture 6
+
+Applications: \lec{6}{2}
+\begin{itemize}	
+	\item Sort documents into categories.
+	\item Route messages to appropriate employee.
+	\item Language identification.
+	\item Sentiment detection.
+	\item Relevant/irrelevant classification in search results.
+\end{itemize}
+Can categorise based on topic, genre, function, author, style, dichotomy (spam/ham) etc.
+
+Problems of extracting rules from human experts: hard to verbalise, low coverage, not very accurate. \lec{6}{2}
+
+\paragraph{Optimal Bayes classification} maximises the posterior probability $P(class|document)$: \lec{6}{3}
+$$c^* = \argmax_c P(c|d) = \argmax_c P(d|c) P(c)$$
+
+\paragraph{Naive Bayes classification} approximates
+$$P(d|c) = \prod_{w \in d} P(w|c)^{\textrm{tf}(w;d)}$$
+
+We don't know $P(c)$ and $P(w|c)$, but we can estimate them from our collection \lec{6}{3}, which yields the following classification rule (if we logarithm the posterior first):
+$$c^* = \argmax_c [\log \hat{P}(c) + \sum_{w \in d} \textrm{tf}(w;d) \log \hat{P}(w|c)]$$
+
+This approach runs into a problem: many $\hat{P}(w|c)$ are equal to 0 $\implies$ documents containing unseen words (for a class) will never be assigned to this class. Solution: Laplace smoothing ($\alpha > 0$): \lec{6}{4}
+
+$$\hat{P}(w|c) := \frac{\sum_{d \in c} tf(w;d) + \alpha}{\sum_{d \in c} len(d) + \alpha \textcolor{red!50}{\# \{w\}}}$$
+
+We can evaluate the resulting classifier using hold-out data (cross-validation).
+
+The Naive Bayes classification rule is linear, so we can generalise to logistic regression and learn the optimal parameters directly -- the features in our training data are term frequencies \lec{6}{5}. In logistic regression, we can run online stochastic gradient descent so it is possible to learn in a streaming fashion \lec{6}{5}. It can be generalised to multiclass classification using the softmax function \lec{6}{6}.
+
+SVMs are another option for classification; they can also be trained online using the PEGASOS algorithm with a stochastic update rule \lec{6}{7}.
+
+
+
+
+
+
+\newpage\section{Machine learning for ranking}
+\lectures{7}
+% Lecture 7
+
+Goal: learn a ranking function, given training data.
+
+Types of training data: \lec{7}{1}
+\begin{itemize}
+		\item Pointwise: relevance of individual documents.
+		\item Pairwise: document A is preferred to document B.
+		\item List data: ideal ranked list (NOT covered in lecture).
+\end{itemize}
+
+Since relevance is always relative to a query q, we need to extract features from document-query pairs (d, q). We can get these features from several sources \lec{7}{1}.
+
+\paragraph{For pointwise data} we can use linear ordinal regression, which is a generalisation of binary classification: it lets us assign each datapoint into one of R buckets called \emph{regression levels}. The real line is partitioned into R intervals, each of which is a regression level. We can define a generalised hinge (margin) loss, calculate the subgradient and then run online stochastic subgradient descent. \lec{7}{1-2}
+
+\paragraph{For pairwise data} we can similarly define a simple regression function, define a pairwise loss and run online stochastic subgradient descent. This method is especially well-suited if we only have user click data and no explicit relevance ratings. \lec{7}{3}
+
+
+
+
+
+\newpage\section{Document indexing}
+
+\subsection{Indexes}
+\lectures{8}
+
+For real-time search systems, we want to keep an efficient look-up structure for retrieving and scoring documents. For this, we invest offline computation and storage to make queries faster. Main challenges: distributing over machines, scalable construction, support for different queries, compression. \lec{8}{1}
+
+\paragraph{Types of indexes} A \emph{forward index} is a mapping $\textrm{(document ID} \rightarrow \textrm{list of terms)}$ \lec{8}{1}. An \emph{inverted index} is the reverse of a forward index: it is a mapping $\textrm{(term} \rightarrow \textrm{list of document IDs)}$ \lec{8}{2}. A \emph{frequency index} is an inverted index with term counts \lec{8}{3}. A \emph{positional index} is an inverted index with term positions (and, implicitly, term counts) \lec{8}{5}.
+
+It is also possible to index phrases (\emph{multi-term indexing}); this is faster than positional indexing \lec{8}{5} and done by identifying phrases during tokenisation.
+
+\paragraph{List intersection} For querying, we need to quickly intersect lists of document ID-s (one for each query term) that we got from the inverted index. If the lists are sorted, we can exploit this to create a more efficient list intersection algorithm. For intersecting multiple lists, starting with the shortest lists is more efficient. \lec{8}{3-4}
+
+
+\subsection{Scaling up indexing}
+\lectures{9}
+
+Our collection (the Web) is too large to fit an index in the memory of a single machine. There are three possible solutions: BSBI, SPIMI and MapReduce.
+
+\emph{Blocked Sort-Based Indexing} (BSBI) processes postings in blocks and then merges them \lec{9}{1}. \emph{Single-Pass in-Memory Indexing} (SPIMI) partitions the collection to many machine and constructs local indexes for each partition, which can then be merged into a global index (at query time or before) \lec{9}{1}.
+
+\paragraph{MapReduce} \lec{9}{2}
+\begin{itemize}
+	\item Mapper: emits postings (term, docID, 1).
+	\item Combiner: combines duplicate postings (sums counts).
+	\item Reducer: groups tuples with the same key (term) and returns list of documents containing that term.
+\end{itemize}
+
+% Lecture 10
+\newpage\subsection{Serving indexes}
+\lectures{10}
+
+When we have an index, how do we store it and process queries? We need to split the index into pieces aka shards. In \emph{document sharding}, each machine gets a range of document IDs; in \emph{term sharding}, each machine gets a range of terms \lec{10}{1}. Both have pros and cons \lec{10}{2}; document sharding is standard.
+
+A common approach is to assign smaller IDs to more important documents and partition index by document. Index shards can be replicated to increase query capacity; a cache layer can be added on top of this. \lec{10}{2} If we have enough shards (or replicas?), we can fit the whole index into memory \lec{10}{3}.
+
+\subsection{Real-time scoring}
+\lectures{10}
+
+How to calculate score of documents once we have an inverted index? In several phases: a) get candidate documents, b) preliminary scoring, c) full scoring, and more. This can be done in a distributed manner; then we need to combine the result lists. \lec{10}{3}
+
+Since we don't want to retrieve documents with small scores, we can discard many documents. There are also several heuristics how to reduce the size of the result list, like taking the union of pairwise 2-word subqueries \lec{10}{3}, or ordering posting lists by PageRank (or something else) and aborting search after a partial scan of the list \lec{10}{4}.
+
+\subsection{Dictionaries}
+\lectures{10}
+
+Heap's law tells us the vocabulary size (number of distinct tokens $m$) is $O(\sqrt{n})$ in the number of tokens $n$. Specifically, $m(n) = k n^\beta$ where $\beta \approx 0.5$ and $30 \leq k \leq 100$ \lec{10}{4}. Since the dictionary can get quite large at web-scale and the uncompressed fixed-width array representation is wasteful, we might need to compress it. There are several ways to compress a dictionary: string representation, block-string representation or hash tables \lec{10}{5}.
+
+\newpage\subsection{Index compression}
+\lectures{10}
+
+Indexes take a lot of space (disk or memory). Zipf's law tells us that collection frequency of terms follows a power-law distribution: there are few very frequent terms and many rare terms. This means that for frequently-occurring terms, gaps between consecutive docID-s are much smaller than the docIDs themselves \lec{10}{6}. Shannon's entropy lower-bounds our average code length \lec{10}{8}.
+
+\paragraph{Variable Length Encoding (VLC)} lets us take advantage of the fact that small gaps are very common. VLC uses 7 bits to encode a number and 1 bit as the continuation bit which tells us whether the next block (8 bits) contains a new number or continues the current number. It is very simple and efficient, but limited to 8-bit (or multiple) codewords. \lec{10}{6}
+
+\paragraph{Gamma code} gives us bit-level control over codeword length. We represent each number by its length (in \emph{unary}) concatenated with its offset (in binary) \lec{10}{6}. Examples in \lec{10}{7}. Downside: decoding can be slow (higher query time) and the process is complex.
+
+\paragraph{Golomb code} makes some simple assumptions and yields a very efficient Huffman-style code given these assumptions. It uses a divisor $b$ and encodes a number $x$ as integer quotient $q$ and remainder $r$ such that $x=qb + r$. \lec{10}{8}
+
+An extension, the Local Bernoulli model, uses a different $b$ for each term: small $b$ for frequent terms (small gaps between docID-s) and large $b$ for infrequent terms (large gaps). It is better than global Bernoulli in practice. \lec{10}{9}
+
+Some further optimisations can be made: block-based variable-length encoding, Varint encoding, group Varint encoding. \lec{10}{9}
+
+
+
+\afterpage{\null\newpage}
+\newpage\section{Link analysis}
+\lectures{11}
+% Lecture 11
+
+We'd like to compute relevance of documents without queries. For this, we can exploit the hyperlink graph of the Web. Thus we make two assumptions: a) hyperlink is a quality signal (endorsement) and b) anchor text describes the target page. This may be suscepible to manipulation though (link bombs). \lec{11}{1}
+
+
+\paragraph{PageRank} We can think of the web as a directed graph: nodes are pages, links are edges. In this case we can do citation analysis, e.g. calculate the [weighted] citation frequency for each node \lec{11}{2}. This is the idea of \emph{PageRank}.
+
+To use the in-degree as a quality score, we can calculate PageRank using random web surfing. By defining transition probabilities at each node we get a Markov Chain; the stationary distribution of this MC encodes the importance (PageRank) of each page. \lec{11}{3}
+
+Instead of sampling the MC step-by-step, we can use the \emph{power method}: simulate all one-step transitions simultaneously by multiplying our estimate by the adjacency matrix T in each step. This means we just need to find the eigenvector of T. \lec{11}{3}
+
+To personalise PageRank, we can calculate a PageRank for each topic and model users as weighted combinations of topics \lec{11}{4}.
+
+\paragraph{The hub-and-authority model} assumes there is two types of relevance: a) hub -- a good lists of links to information needed, and b) authority -- a direct answer to the information need. We can calculate hub-and-authority scores on the top n search results (the root set) by finding all in/out-neighbors of the root set (base set) and iteratively updating the hub scores and authority scores \lec{11}{5-6}. The updates are done based on the adjacency matrix and we can apply the power method here as well \lec{11}{7}.
+
+\paragraph{Comparing} PageRank and hub-authority (HA) model: \lec{11}{7}
+\begin{itemize}
+		\item PageRank can be precomputed, HA needs expensive query-time computation.
+		\item They formalise the eigenvalue problem differently.
+		\item They use a different set of pages to apply the formalisation to.
+\end{itemize}
+
+
+
+
+
+\newpage\section{Recommender systems}
+\lectures{12}
+% Lecture 12
+
+Recommender systems are designed to automatically give personalised recommendations to users based on other users' choices (collaborative filtering) or on attributes of items previously chosen by the same user (content-based filtering). \lec{12}{1-2}
+
+The data we can use can be explicit (ratings, reviews, questionnaires) or implicit (page visits, purchase history, clicking patterns). We can also distinguish between short-term tasks a customer is trying to complete and long-term interests. \lec{12}{1-2}
+
+Collaborative filtering has some advantages over content-based filtering: we don't need to be able to characterise the items; we can filter based on quality and taste (not just content) \lec{12}{2}.
+
+\emph{Matrix completion} is the main task in collaborative filtering. Using the Frobenius norm (element-wise squared error summed over the matrix) and assuming the matrix has low rank \lec{12}{2}, we can a) impute and run SVD or b) use a Latent Vector Model (LVM) \lec{12}{3}. The LVM assigns a vector to each item (L) and each user (R), predicts ratings as a scalar product of these vectors, and is trained using alternating least squares (update L holding R fixed, then update R holding L fixed). The training of LVMs is easy to parallelise but only finds local optimum. \lec{12}{3}
+
+
+
+
+
+\section{Entities and semantic search}
+\lectures{13}
+% Lecture 13
+
+An entity is \emph{a thing with a name}. Entities have IDs, names, types, attributes, and relationships \lec{13}{1}. Challenge with entity name mining: name disambiguation, multilingual names \lec{13}{2}. Entities can be linked to other entities through different relationships.
+
+In any text, we can find and link entities. We can detect which words represent other entities by doing statistics: keyphraseness and commonness \lec{13}{3}. To disambiguate, we can compare the local context in our text, and the Wikipedia article on each of the candidate entities.
+
+We can use relatedness -- defined using inbound links to entities -- for disambiguating entitiy names in articles. \lec{13}{4}
+
+Having a good database of entities allows us to respond to search queries by understanding user intent. \lec{13}{5}
+
+
+
+
+\iffalse
 \begin{enumerate}
 	\item
 \end{enumerate}
 \begin{itemize}
 		\item
 \end{itemize}
+\fi
 
 \end{document}
